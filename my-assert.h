@@ -28,11 +28,11 @@ typedef uintmax_t assert_print_t;
 #define CONDITION_cilk_and(a, b) \
     ((OBSTRUCT(CONDITION_HELPER)()(a)) && (OBSTRUCT(CONDITION_HELPER)()(b)))
 
-#define CONDITION_FMT_cilk_and(...) \
-    "%s = 0x%" PRI_ASSERT ", %s = 0x%" PRI_ASSERT
+#define CONDITION_FMT_cilk_and(a, b) \
+    OBSTRUCT(CONDITION_FMT_HELPER)()(a) ", " OBSTRUCT(CONDITION_FMT_HELPER)()(b)
 
 #define CONDITION_VALS_cilk_and(a, b) \
-    #a, (assert_print_t)(a), #b, (assert_print_t)(b)
+    OBSTRUCT(CONDITION_VALS_HELPER)()(a), OBSTRUCT(CONDITION_VALS_HELPER)()(b)
 
 #define CONDITION_cilk_eq(a, b) \
     (a) == (b)
@@ -64,20 +64,24 @@ define C2CILK_MACRO_PARAMS_TO_FUNC_PARAMS(...)                                \
 #define CONDITION_VALS_cilk_eq(a, b) \
     #a, (assert_print_t)(a), #b, (assert_print_t)(b)
 
-#define CONDITION(...) \
-        /*EXPAND(*/\
-            OBSTRUCT(CONDITION_HELPER)() (__VA_ARGS__)\
-        /*)*/
+#define CONDITION(cond) \
+    OBSTRUCT(CONDITION_HELPER)() (cond)
 
 #define CONDITION_HELPER() \
     CONDITION_HELPER_HELPER
 
-#define CONDITION_HELPER_HELPER(cond, ...) CONDITION_ ## cond __VA_ARGS__
+#define CONDITION_HELPER_HELPER(cond) CONDITION_ ## cond
 
-#define CONDITION_FMT(cond) CONDITION_FMT_ ## cond
-#define CONDITION_VALS(cond) CONDITION_VALS_ ## cond
+#define CONDITION_FMT(cond) OBSTRUCT(CONDITION_FMT_HELPER)()(cond)
+#define CONDITION_FMT_HELPER() CONDITION_FMT_HELPER_HELPER
+#define CONDITION_FMT_HELPER_HELPER(cond) CONDITION_FMT_ ## cond
+
+#define CONDITION_VALS(cond) OBSTRUCT(CONDITION_VALS_HELPER)()(cond)
+#define CONDITION_VALS_HELPER() CONDITION_VALS_HELPER_HELPER
+#define CONDITION_VALS_HELPER_HELPER(cond) CONDITION_VALS_ ## cond
+
 #define PRINT_CONDITION(cond) \
-    ASSERT_PRINTF("\t" CONDITION_FMT(cond) "\n", CONDITION_VALS(cond))
+    ASSERT_PRINTF("\t" EXPAND(CONDITION_FMT(cond)) "\n", EXPAND(CONDITION_VALS(cond)))
 
 #define __cilk_delayed_stringify(var) #var
 
@@ -89,7 +93,7 @@ define C2CILK_MACRO_PARAMS_TO_FUNC_PARAMS(...)                                \
             printf("%s::%s::%d --> assertion \"%s\" failed\n",                  \
                     __FILE__, __PRETTY_FUNCTION__, __LINE__,                   \
                     "" cilk_delayed_stringify(cond));                  \
-            /*PRINT_CONDITION(cond);*/                                             \
+            PRINT_CONDITION(cond);                                             \
             /*exit(0xa5);*/                                                    \
         }                                                                      \
     } while (0)
